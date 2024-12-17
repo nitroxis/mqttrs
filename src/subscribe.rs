@@ -12,6 +12,9 @@ pub(crate) type LimitedString = std::string::String;
 #[cfg(not(feature = "std"))]
 pub(crate) type LimitedString = heapless::String<256>;
 
+#[cfg(not(feature = "std"))]
+use core::convert::TryFrom;
+
 /// Subscribe topic.
 ///
 /// [Subscribe] packets contain a `Vec` of those.
@@ -26,7 +29,10 @@ pub struct SubscribeTopic {
 
 impl SubscribeTopic {
     pub(crate) fn from_buffer(buf: &[u8], offset: &mut usize) -> Result<Self, Error> {
+        #[cfg(feature = "std")]
         let topic_path = LimitedString::from(read_str(buf, offset)?);
+        #[cfg(not(feature = "std"))]
+        let topic_path = LimitedString::try_from(read_str(buf, offset)?).unwrap();
         let qos = QoS::from_u8(buf[*offset])?;
         *offset += 1;
         Ok(SubscribeTopic { topic_path, qos })
@@ -155,7 +161,10 @@ impl Unsubscribe {
 
         let mut topics = LimitedVec::new();
         while *offset < payload_end {
+            #[cfg(feature = "std")]
             let _res = topics.push(LimitedString::from(read_str(buf, offset)?));
+            #[cfg(not(feature = "std"))]
+            let _res = topics.push(LimitedString::try_from(read_str(buf, offset)?).unwrap());
 
             #[cfg(not(feature = "std"))]
             _res.map_err(|_| Error::InvalidLength)?;

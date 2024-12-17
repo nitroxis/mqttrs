@@ -1,5 +1,8 @@
 use crate::{decoder::*, encoder::*, *};
 
+#[cfg(not(feature = "std"))]
+use core::convert::TryFrom;
+
 /// Protocol version.
 ///
 /// Sent in [`Connect`] packet.
@@ -23,7 +26,13 @@ impl Protocol {
         match (name, level) {
             ("MQIsdp", 3) => Ok(Protocol::MQIsdp),
             ("MQTT", 4) => Ok(Protocol::MQTT311),
+            #[cfg(feature = "std")]
             _ => Err(Error::InvalidProtocol(name.into(), level)),
+            #[cfg(not(feature = "std"))]
+            _ => Err(Error::InvalidProtocol(
+                heapless::String::try_from(name).unwrap(),
+                level,
+            )),
         }
     }
     pub(crate) fn from_buffer<'a>(buf: &'a [u8], offset: &mut usize) -> Result<Self, Error> {
